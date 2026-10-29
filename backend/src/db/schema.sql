@@ -16,3 +16,21 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_refresh_user ON refresh_tokens (user_id);
+
+CREATE TABLE IF NOT EXISTS properties (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title         VARCHAR(150) NOT NULL,
+  description   TEXT NOT NULL,
+  city          VARCHAR(80) NOT NULL,
+  locality      VARCHAR(120),
+  price         NUMERIC(14,2) NOT NULL CHECK (price > 0),
+  property_type VARCHAR(30) NOT NULL,
+  bedrooms      INT NOT NULL DEFAULT 0,
+  bathrooms     INT NOT NULL DEFAULT 0,
+  area_sqft     INT NOT NULL CHECK (area_sqft > 0),
+  images        TEXT[] NOT NULL DEFAULT '{}',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
