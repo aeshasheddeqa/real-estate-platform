@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const propertyTypes = ['apartment', 'villa', 'house', 'plot', 'commercial'] as const;
+export const propertyTypes = ['apartment', 'villa', 'house', 'plot', 'commercial'] as const;
 
 export const createPropertySchema = z.object({
   title: z.string().trim().min(5).max(150),
@@ -15,3 +15,16 @@ export const createPropertySchema = z.object({
 });
 
 export const updatePropertySchema = createPropertySchema.partial();
+
+export const searchSchema = z.object({
+  city: z.string().trim().min(1).optional(),
+  propertyType: z.enum(propertyTypes).optional(),
+  bedrooms: z.coerce.number().int().min(0).optional(),
+  minPrice: z.coerce.number().positive().optional(),
+  maxPrice: z.coerce.number().positive().optional(),
+  sort: z.enum(['newest', 'price_asc', 'price_desc']).default('newest'),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  cursor: z.string().optional(),
+});
+
+export type SearchQuery = z.infer<typeof searchSchema>;

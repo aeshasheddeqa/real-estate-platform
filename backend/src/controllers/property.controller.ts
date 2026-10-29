@@ -49,3 +49,19 @@ export const mine = async (req: Request, res: Response, next: NextFunction) => {
     next(error);
   }
 };
+
+export const search = async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await propertyService.searchProperties(res.locals.query));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const similar = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await propertyService.getSimilarProperties(req.params.id as string));
+  } catch (error) {
+    next(error);
+  }
+};
