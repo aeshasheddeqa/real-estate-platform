@@ -1,8 +1,8 @@
 import { pool } from '../config/db';
 import { AppError } from '../utils/AppError';
 import { SearchQuery } from '../schemas/property.schema';
+import { UUID_REGEX } from '../utils/uuid';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const columns = `id, owner_id, title, description, city, locality, price,
   property_type AS "propertyType", bedrooms, bathrooms,
   area_sqft AS "areaSqft", images, created_at AS "createdAt"`;

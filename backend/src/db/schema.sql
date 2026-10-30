@@ -64,3 +64,15 @@ CREATE INDEX IF NOT EXISTS idx_properties_created
 -- Sorting by price
 CREATE INDEX IF NOT EXISTS idx_properties_price
   ON properties (price, id);
+
+  CREATE TABLE IF NOT EXISTS inquiries (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  sender_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (property_id, sender_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_inquiries_property ON inquiries (property_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_inquiries_sender ON inquiries (sender_id, created_at DESC);
