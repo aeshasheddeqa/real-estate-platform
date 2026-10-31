@@ -76,3 +76,5 @@ CREATE INDEX IF NOT EXISTS idx_properties_price
 
 CREATE INDEX IF NOT EXISTS idx_inquiries_property ON inquiries (property_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_inquiries_sender ON inquiries (sender_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_properties_owner
+  ON properties (owner_id, created_at DESC, id DESC);

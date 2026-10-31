@@ -44,7 +44,8 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
 
 export const mine = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await propertyService.getMyProperties(req.user!.id));
+    const { limit, cursor } = res.locals.query;
+    res.json(await propertyService.getMyProperties(req.user!.id, limit, cursor));
   } catch (error) {
     next(error);
   }

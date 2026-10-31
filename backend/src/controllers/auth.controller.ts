@@ -45,3 +45,11 @@ export const logout = (_req: Request, res: Response) => {
   res.clearCookie('refreshToken');
   res.status(204).send();
 };
+
+export const me = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await authService.getUserById(req.user!.id));
+  } catch (error) {
+    next(error);
+  }
+};

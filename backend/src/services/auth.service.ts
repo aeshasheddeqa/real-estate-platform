@@ -70,3 +70,9 @@ export const refreshAccessToken = (refreshToken?: string) => {
     throw new AppError(401, 'Invalid or expired refresh token');
   }
 };
+
+export const getUserById = async (id: string) => {
+  const result = await pool.query('SELECT id, name, email, phone FROM users WHERE id = $1', [id]);
+  if (result.rows.length === 0) throw new AppError(404, 'User not found');
+  return result.rows[0];
+};

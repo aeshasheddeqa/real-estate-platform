@@ -8,3 +8,16 @@ export const formatPrice = (price: string | number) =>
     currency: 'INR',
     maximumFractionDigits: 0,
   }).format(Number(price));
+
+  export async function parseError(res: Response): Promise<string> {
+  try {
+    const body = await res.json();
+    if (body.errors && typeof body.errors === 'object') {
+      const first = Object.values(body.errors).flat()[0];
+      if (typeof first === 'string') return first;
+    }
+    return body.message || 'Something went wrong';
+  } catch {
+    return 'Something went wrong';
+  }
+}

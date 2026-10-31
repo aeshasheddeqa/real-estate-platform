@@ -78,12 +78,54 @@ export const deleteProperty = async (id: string, userId: string) => {
   await pool.query('DELETE FROM properties WHERE id = $1', [id]);
 };
 
-export const getMyProperties = async (userId: string) => {
-  const result = await pool.query(
-    `SELECT ${columns} FROM properties WHERE owner_id = $1 ORDER BY created_at DESC`,
-    [userId]
-  );
-  return result.rows;
+export const getMyProperties = async (userId: string, limit: number, cursor?: string) => {
+  const values: any[] = [userId];
+  let cursorSql = '';
+
+  // keyset pagination, same idea as the search endpoint
+  if (cursor) {
+    let decoded: { v: string; id: string };
+    try {
+      decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+    } catch {
+      throw new AppError(400, 'Invalid cursor');
+    }
+    if (typeof decoded.v !== 'string' || !UUID_REGEX.test(decoded.id)) {
+      throw new AppError(400, 'Invalid cursor');
+    }
+    values.push(decoded.v, decoded.id);
+    cursorSql = 'AND (created_at, id) < ($2::timestamptz, $3::uuid)';
+  }
+
+  values.push(limit + 1); // one extra row tells us if there is a next page
+
+  let result;
+  try {
+    result = await pool.query(
+      `SELECT ${columns}, created_at::text AS "sortValue"
+       FROM properties
+       WHERE owner_id = $1 ${cursorSql}
+       ORDER BY created_at DESC, id DESC
+       LIMIT $${values.length}`,
+      values
+    );
+  } catch (err: any) {
+    if (cursor && ['22P02', '22007', '22008'].includes(err.code)) {
+      throw new AppError(400, 'Invalid cursor');
+    }
+    throw err;
+  }
+
+  const hasMore = result.rows.length > limit;
+  const rows = result.rows.slice(0, limit);
+
+  let nextCursor: string | null = null;
+  if (hasMore) {
+    const last = rows[rows.length - 1];
+    nextCursor = Buffer.from(JSON.stringify({ v: last.sortValue, id: last.id })).toString('base64url');
+  }
+
+  return { data: rows.map(({ sortValue, ...rest }) => rest), nextCursor };
 };
 
 const SORTS = {
@@ -180,7 +222,7 @@ export const getSimilarProperties = async (id: string) => {
 
   const result = await pool.query(
     `SELECT id, title, city, locality, price, property_type AS "propertyType",
-            bedrooms, area_sqft AS "areaSqft", images[1] AS image
+            bedrooms, bathrooms,area_sqft AS "areaSqft", images[1] AS image
      FROM properties
      WHERE LOWER(city) = LOWER($1)
        AND property_type = $2
