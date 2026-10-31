@@ -16,7 +16,8 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
 export const received = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await inquiryService.getReceivedInquiries(req.user!.id));
+    const { limit, cursor } = res.locals.query;
+    res.json(await inquiryService.getReceivedInquiries(req.user!.id, limit, cursor));
   } catch (error) {
     next(error);
   }

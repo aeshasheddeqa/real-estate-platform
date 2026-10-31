@@ -16,7 +16,7 @@ export default function InquiryForm({ propertyId, ownerId }: { propertyId: strin
   if (!user) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-5 text-sm">
-        <Link href={`/login?next=/properties/${propertyId}`} className="font-medium text-blue-600 hover:underline">
+        <Link href={`/login?next=/properties/${propertyId}`} className="font-medium text-red-700 hover:underline">
           Log in
         </Link>{' '}
         to send an inquiry to the owner.
@@ -66,7 +66,7 @@ export default function InquiryForm({ propertyId, ownerId }: { propertyId: strin
       <button
         type="submit"
         disabled={status === 'sending'}
-        className="w-full rounded bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+        className="w-full rounded bg-red-700 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
       >
         {status === 'sending' ? 'Sending...' : 'Send inquiry'}
       </button>

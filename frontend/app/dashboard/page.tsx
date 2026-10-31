@@ -16,8 +16,6 @@ type MyProperty = {
   images: string[];
 };
 
-type MinePage = { data: MyProperty[]; nextCursor: string | null };
-
 type ReceivedInquiry = {
   id: string;
   message: string;
@@ -29,14 +27,21 @@ type ReceivedInquiry = {
   senderPhone: string | null;
 };
 
+type Page<T> = { data: T[]; nextCursor: string | null };
+
 export default function DashboardPage() {
   const { user, loading, authFetch } = useAuth();
   const router = useRouter();
+
   const [properties, setProperties] = useState<MyProperty[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [propertyCursor, setPropertyCursor] = useState<string | null>(null);
+  const [loadingMoreProperties, setLoadingMoreProperties] = useState(false);
+
   const [inquiries, setInquiries] = useState<ReceivedInquiry[]>([]);
+  const [inquiryCursor, setInquiryCursor] = useState<string | null>(null);
+  const [loadingMoreInquiries, setLoadingMoreInquiries] = useState(false);
+
   const [busy, setBusy] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
 
   // protect the page: send visitors who are not logged in to the login page
@@ -50,13 +55,15 @@ export default function DashboardPage() {
     try {
       const [p, i] = await Promise.all([
         authFetch(`/api/properties/mine?limit=${PAGE_SIZE}`),
-        authFetch('/api/inquiries/received'),
+        authFetch(`/api/inquiries/received?limit=${PAGE_SIZE}`),
       ]);
       if (!p.ok || !i.ok) throw new Error('Could not load your dashboard');
-      const page: MinePage = await p.json();
-      setProperties(page.data);
-      setNextCursor(page.nextCursor);
-      setInquiries(await i.json());
+      const propertyPage: Page<MyProperty> = await p.json();
+      const inquiryPage: Page<ReceivedInquiry> = await i.json();
+      setProperties(propertyPage.data);
+      setPropertyCursor(propertyPage.nextCursor);
+      setInquiries(inquiryPage.data);
+      setInquiryCursor(inquiryPage.nextCursor);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
@@ -68,21 +75,38 @@ export default function DashboardPage() {
     if (user) load();
   }, [user, load]);
 
-  const loadMore = async () => {
-    if (!nextCursor) return;
-    setLoadingMore(true);
+  const loadMoreProperties = async () => {
+    if (!propertyCursor) return;
+    setLoadingMoreProperties(true);
     setError('');
     const res = await authFetch(
-      `/api/properties/mine?limit=${PAGE_SIZE}&cursor=${encodeURIComponent(nextCursor)}`
+      `/api/properties/mine?limit=${PAGE_SIZE}&cursor=${encodeURIComponent(propertyCursor)}`
     );
-    setLoadingMore(false);
+    setLoadingMoreProperties(false);
     if (!res.ok) {
       setError('Could not load more properties');
       return;
     }
-    const page: MinePage = await res.json();
+    const page: Page<MyProperty> = await res.json();
     setProperties((prev) => [...prev, ...page.data]);
-    setNextCursor(page.nextCursor);
+    setPropertyCursor(page.nextCursor);
+  };
+
+  const loadMoreInquiries = async () => {
+    if (!inquiryCursor) return;
+    setLoadingMoreInquiries(true);
+    setError('');
+    const res = await authFetch(
+      `/api/inquiries/received?limit=${PAGE_SIZE}&cursor=${encodeURIComponent(inquiryCursor)}`
+    );
+    setLoadingMoreInquiries(false);
+    if (!res.ok) {
+      setError('Could not load more inquiries');
+      return;
+    }
+    const page: Page<ReceivedInquiry> = await res.json();
+    setInquiries((prev) => [...prev, ...page.data]);
+    setInquiryCursor(page.nextCursor);
   };
 
   const remove = async (id: string, title: string) => {
@@ -99,15 +123,15 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-10 px-4 py-8">
+      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+
       <section>
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">My properties</h1>
-          <Link href="/dashboard/new" className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <Link href="/dashboard/new" className="rounded bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800">
             + Add property
           </Link>
         </div>
-
-        {error && <p className="mb-3 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
         {busy ? (
           <p className="text-gray-500">Loading...</p>
@@ -143,14 +167,14 @@ export default function DashboardPage() {
               })}
             </ul>
 
-            {nextCursor && (
+            {propertyCursor && (
               <div className="mt-4 text-center">
                 <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="rounded bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                  onClick={loadMoreProperties}
+                  disabled={loadingMoreProperties}
+                  className="rounded bg-red-700 px-6 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
                 >
-                  {loadingMore ? 'Loading...' : 'Load more'}
+                  {loadingMoreProperties ? 'Loading...' : 'Load more'}
                 </button>
               </div>
             )}
@@ -160,25 +184,40 @@ export default function DashboardPage() {
 
       <section>
         <h2 className="mb-4 text-2xl font-bold">Inquiries received</h2>
+
         {busy ? null : inquiries.length === 0 ? (
           <p className="rounded border border-dashed border-gray-300 p-8 text-center text-gray-500">
             No inquiries yet.
           </p>
         ) : (
-          <ul className="space-y-3">
-            {inquiries.map((q) => (
-              <li key={q.id} className="rounded-lg border border-gray-200 bg-white p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <Link href={`/properties/${q.propertyId}`} className="font-medium hover:underline">{q.propertyTitle}</Link>
-                  <span className="text-gray-400">{new Date(q.createdAt).toLocaleDateString('en-IN')}</span>
-                </div>
-                <p className="mt-2 whitespace-pre-line text-sm text-gray-700">{q.message}</p>
-                <p className="mt-2 text-xs text-gray-500">
-                  From {q.senderName} · {q.senderEmail}{q.senderPhone ? ` · ${q.senderPhone}` : ''}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-3">
+              {inquiries.map((q) => (
+                <li key={q.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <Link href={`/properties/${q.propertyId}`} className="font-medium hover:underline">{q.propertyTitle}</Link>
+                    <span className="text-gray-400">{new Date(q.createdAt).toLocaleDateString('en-IN')}</span>
+                  </div>
+                  <p className="mt-2 whitespace-pre-line text-sm text-gray-700">{q.message}</p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    From {q.senderName} · {q.senderEmail}{q.senderPhone ? ` · ${q.senderPhone}` : ''}
+                  </p>
+                </li>
+              ))}
+            </ul>
+
+            {inquiryCursor && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={loadMoreInquiries}
+                  disabled={loadingMoreInquiries}
+                  className="rounded bg-red-700 px-6 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
+                >
+                  {loadingMoreInquiries ? 'Loading...' : 'Load more'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
     </main>

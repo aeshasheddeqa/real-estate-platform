@@ -104,7 +104,7 @@ export default function PropertyForm({ property }: { property?: PropertyDetail }
 
       {error && <p className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
 
-      <button type="submit" disabled={submitting} className="rounded bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
+      <button type="submit" disabled={submitting} className="rounded bg-red-700 px-6 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60">
         {submitting ? 'Saving...' : editing ? 'Save changes' : 'Create property'}
       </button>
     </form>

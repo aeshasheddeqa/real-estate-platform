@@ -11,3 +11,12 @@ export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().regex(/^[0-9a-f]{64}$/, 'Invalid reset link'),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(72),
+});

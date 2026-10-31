@@ -78,3 +78,15 @@ CREATE INDEX IF NOT EXISTS idx_inquiries_property ON inquiries (property_id, cre
 CREATE INDEX IF NOT EXISTS idx_inquiries_sender ON inquiries (sender_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_properties_owner
   ON properties (owner_id, created_at DESC, id DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_inquiries_created ON inquiries (created_at DESC, id DESC);
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  TEXT NOT NULL UNIQUE,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets (user_id);

@@ -1,6 +1,7 @@
 import { pool } from '../config/db';
 import { AppError } from '../utils/AppError';
 import { UUID_REGEX } from '../utils/uuid';
+import { encodeCursor, decodeCursor } from '../utils/cursor';
 
 export const createInquiry = async (propertyId: string, senderId: string, message: string) => {
   if (!UUID_REGEX.test(propertyId)) throw new AppError(400, 'Invalid property id');
@@ -28,21 +29,52 @@ export const createInquiry = async (propertyId: string, senderId: string, messag
   }
 };
 
+
 // inquiries received on the logged-in user's properties
-export const getReceivedInquiries = async (ownerId: string) => {
-  const result = await pool.query(
-    `SELECT i.id, i.message, i.created_at AS "createdAt",
-            p.id AS "propertyId", p.title AS "propertyTitle",
-            u.name AS "senderName", u.email AS "senderEmail", u.phone AS "senderPhone"
-     FROM inquiries i
-     JOIN properties p ON p.id = i.property_id
-     JOIN users u ON u.id = i.sender_id
-     WHERE p.owner_id = $1
-     ORDER BY i.created_at DESC
-     LIMIT 100`,
-    [ownerId]
-  );
-  return result.rows;
+// inquiries received on the logged-in user's properties (keyset pagination, newest first)
+export const getReceivedInquiries = async (ownerId: string, limit: number, cursor?: string) => {
+  const values: any[] = [ownerId];
+  let cursorSql = '';
+
+  if (cursor) {
+    const decoded = decodeCursor(cursor);
+    values.push(decoded.v, decoded.id);
+    cursorSql = 'AND (i.created_at, i.id) < ($2::timestamptz, $3::uuid)';
+  }
+
+  values.push(limit + 1); // one extra row tells us if there is a next page
+
+  let result;
+  try {
+    result = await pool.query(
+      `SELECT i.id, i.message, i.created_at AS "createdAt",
+              p.id AS "propertyId", p.title AS "propertyTitle",
+              u.name AS "senderName", u.email AS "senderEmail", u.phone AS "senderPhone",
+              i.created_at::text AS "sortValue"
+       FROM inquiries i
+       JOIN properties p ON p.id = i.property_id
+       JOIN users u ON u.id = i.sender_id
+       WHERE p.owner_id = $1 ${cursorSql}
+       ORDER BY i.created_at DESC, i.id DESC
+       LIMIT $${values.length}`,
+      values
+    );
+  } catch (err: any) {
+    // a tampered cursor value can fail the type cast
+    if (cursor && ['22P02', '22007', '22008'].includes(err.code)) {
+      throw new AppError(400, 'Invalid cursor');
+    }
+    throw err;
+  }
+
+  const hasMore = result.rows.length > limit;
+  const rows = result.rows.slice(0, limit);
+  const last = rows[rows.length - 1];
+
+  return {
+    data: rows.map(({ sortValue, ...rest }) => rest),
+    nextCursor: hasMore ? encodeCursor(last.sortValue, last.id) : null,
+  };
 };
 
 // inquiries the logged-in user has sent

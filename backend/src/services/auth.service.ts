@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
@@ -75,4 +76,43 @@ export const getUserById = async (id: string) => {
   const result = await pool.query('SELECT id, name, email, phone FROM users WHERE id = $1', [id]);
   if (result.rows.length === 0) throw new AppError(404, 'User not found');
   return result.rows[0];
+};
+
+const sha256 = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
+
+export const requestPasswordReset = async (email: string) => {
+  const result = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+  if (result.rows.length === 0) return; // same response either way, so emails cannot be discovered
+
+  const userId = result.rows[0].id;
+  const token = crypto.randomBytes(32).toString('hex'); // 64 hex characters
+
+  // one active reset link per user
+  await pool.query('DELETE FROM password_resets WHERE user_id = $1', [userId]);
+  await pool.query(
+    `INSERT INTO password_resets (user_id, token_hash, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '30 minutes')`,
+    [userId, sha256(token)]
+  );
+
+  // no email service in this project: the link is printed in the server terminal
+  const link = `${env.clientUrl}/reset-password?token=${token}`;
+  console.log(`[password reset] link for ${email}: ${link}`);
+};
+
+export const resetPassword = async (token: string, password: string) => {
+  const found = await pool.query(
+    'SELECT user_id FROM password_resets WHERE token_hash = $1 AND expires_at > NOW()',
+    [sha256(token)]
+  );
+  if (found.rows.length === 0) {
+    throw new AppError(400, 'This reset link is invalid or has expired');
+  }
+  const userId = found.rows[0].user_id;
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+
+  // the link works only once
+  await pool.query('DELETE FROM password_resets WHERE user_id = $1', [userId]);
 };

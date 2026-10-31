@@ -53,3 +53,21 @@ export const me = async (req: Request, res: Response, next: NextFunction) => {
     next(error);
   }
 };
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await authService.requestPasswordReset(req.body.email);
+    res.json({ message: 'If an account exists for this email, a password reset link has been sent.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await authService.resetPassword(req.body.token, req.body.password);
+    res.json({ message: 'Your password was updated. You can now log in.' });
+  } catch (error) {
+    next(error);
+  }
+};

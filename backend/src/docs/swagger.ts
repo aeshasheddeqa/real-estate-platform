@@ -124,10 +124,31 @@ export const swaggerSpec = {
       },
     },
     '/api/inquiries/received': {
-      get: { tags: ['Inquiries'], summary: 'Inquiries received on my properties', security: secured, responses: { 200: ok('List of inquiries'), 401: err('Not logged in') } },
-    },
+  get: {
+    tags: ['Inquiries'], summary: 'Inquiries received on my properties (cursor pagination)', security: secured,
+    parameters: [
+      { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 50, default: 10 } },
+      { name: 'cursor', in: 'query', description: 'nextCursor from the previous page', schema: { type: 'string' } },
+    ],
+    responses: { 200: ok('A page of inquiries: { data, nextCursor }'), 400: err('Invalid cursor'), 401: err('Not logged in') },
+  },
+},
     '/api/inquiries/sent': {
       get: { tags: ['Inquiries'], summary: 'Inquiries I have sent', security: secured, responses: { 200: ok('List of inquiries'), 401: err('Not logged in') } },
     },
+    '/api/auth/forgot-password': {
+  post: {
+    tags: ['Auth'], summary: 'Request a password reset link (always answers 200)',
+    requestBody: json({ type: 'object', required: ['email'], properties: { email: { type: 'string' } } }),
+    responses: { 200: ok('Generic confirmation message'), 400: err('Validation failed'), 429: err('Too many attempts') },
+  },
+},
+'/api/auth/reset-password': {
+  post: {
+    tags: ['Auth'], summary: 'Set a new password using the reset token',
+    requestBody: json({ type: 'object', required: ['token', 'password'], properties: { token: { type: 'string' }, password: { type: 'string', minLength: 8 } } }),
+    responses: { 200: ok('Password updated'), 400: err('Invalid or expired link, or validation failed'), 429: err('Too many attempts') },
+  },
+},
   },
 };

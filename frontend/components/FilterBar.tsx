@@ -31,7 +31,7 @@ export default function FilterBar({ values }: Props) {
       </select>
 
       <div className="flex gap-2 sm:col-span-2 lg:col-span-6">
-        <button type="submit" className="rounded bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        <button type="submit" className="rounded bg-red-700 px-5 py-2 text-sm font-medium text-white hover:bg-red-800">
           Search
         </button>
         <a href="/properties" className="rounded border border-gray-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-50">
